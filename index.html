@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>晛能 2025 尾牙戰情室 - 行動版</title>
+    <style>
+        :root {
+            --neon-gold: #ffea00;
+            --neon-red: #ff003c;
+            --bg-dark: #0a0a0c;
+        }
+        body { 
+            background-color: var(--bg-dark); color: white; 
+            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+            margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh; overflow-x: hidden;
+        }
+        h1 { font-size: 1.8rem; color: var(--neon-gold); text-shadow: 0 0 15px #ffea00; text-align: center; margin: 10px 0; }
+        .slogan { font-size: 0.8rem; color: #888; letter-spacing: 2px; margin-bottom: 10px; }
+        .round-indicator { font-size: 1.2rem; color: var(--neon-red); font-weight: bold; height: 1.5rem; margin-bottom: 15px; }
+
+        /* 戰場網格：核心優化 */
+        .war-room {
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); /* 手機預設 2 欄 */
+            gap: 10px; width: 100%; max-width: 1200px;
+        }
+        @media (min-width: 768px) {
+            .war-room { grid-template-columns: repeat(5, 1fr); } /* 電腦版改回 5 欄 */
+            h1 { font-size: 2.8rem; }
+        }
+
+        .member-card {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid #333; border-radius: 10px;
+            padding: 15px 5px; text-align: center; position: relative; transition: 0.2s;
+        }
+        .member-card.active { 
+            border-color: var(--neon-gold); box-shadow: 0 0 20px var(--neon-gold);
+            transform: scale(1.05); background: rgba(255, 234, 0, 0.15); z-index: 2;
+        }
+        .name { font-size: 1.1rem; font-weight: bold; color: #fff; }
+        .score { font-size: 1.8rem; color: var(--neon-gold); font-family: 'Arial Black'; margin-top: 5px; }
+        .vote-plus { position: absolute; top: -5px; right: 5px; color: #0f0; font-weight: bold; opacity: 0; }
+
+        /* 控制區 */
+        .controls { margin: 25px 0; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        #start-btn {
+            width: 80%; max-width: 300px; background: linear-gradient(45deg, #ff003c, #ffea00); border: none;
+            padding: 15px; font-size: 1.5rem; font-weight: 900; border-radius: 50px; cursor: pointer;
+            box-shadow: 0 0 20px rgba(255, 0, 60, 0.4);
+        }
+        #reset-btn { background: none; color: #666; border: 1px solid #444; padding: 8px 20px; border-radius: 20px; font-size: 0.9rem; visibility: hidden; }
+
+        /* 排行榜 */
+        .leaderboard {
+            width: 95%; background: rgba(20, 20, 25, 0.9); border-radius: 15px; padding: 15px; 
+            border: 1px solid rgba(255, 234, 0, 0.1); margin-bottom: 30px;
+        }
+        .rank-list { list-style: none; padding: 0; display: grid; grid-template-columns: 1fr; gap: 8px; }
+        @media (min-width: 600px) { .rank-list { grid-template-columns: 1fr 1fr; } }
+        .rank-item { display: flex; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 5px; font-size: 0.9rem; }
+        .rank-item.top-three { border-left: 3px solid var(--neon-gold); background: rgba(255,234,0,0.05); }
+    </style>
+</head>
+<body>
+
+    <h1>⚡ 晛能 2025 戰情室 ⚡</h1>
+    <div class="slogan">POWERED BY XIAN-NENG LEGAL</div>
+    <div class="round-indicator" id="round-text">準備開戰：共 3 輪</div>
+
+    <div class="war-room" id="war-room"></div>
+
+    <div class="controls">
+        <button id="start-btn" onclick="startMegaRound()">啟動積分賽</button>
+        <button id="reset-btn" onclick="resetGame()">重新洗牌</button>
+    </div>
+
+    <div class="leaderboard">
+        <h2 style="text-align:center; font-size:1.2rem; color:var(--neon-gold)">📊 即時排行榜</h2>
+        <ul class="rank-list" id="rank-list"></ul>
+    </div>
+
+    <script>
+        const members = ["莊明憲", "陳秀萍", "張家富", "陳弘秀", "黃耀民", "程筱沁", "程思欣", "尤建郎", "李穗玲", "徐珮茹", "陳美卿", "張琴芬", "薛秀娥", "郭家興", "鄭旭峰", "蕭新福", "張芝榛", "王淑芳", "絲淇", "王信閎"];
+        let scores = {};
+        let currentRound = 1;
+        let audioCtx;
+
+        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        function playTension(p) { 
+            initAudio(); const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+            o.type = 'sawtooth'; o.frequency.setValueAtTime(60 + (p * 4), audioCtx.currentTime);
+            g.gain.setValueAtTime(0.05, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function initUI() {
+            const wr = document.getElementById('war-room'); wr.innerHTML = '';
+            members.forEach(m => {
+                scores[m] = scores[m] || 0;
+                wr.innerHTML += `<div class="member-card" id="card-${m}"><span class="name">${m}</span><div class="score" id="score-${m}">${scores[m]}</div><div class="vote-plus" id="plus-${m}">+1</div></div>`;
+            });
+            updateRank();
+        }
+
+        async function startMegaRound() {
+            if (currentRound > 3) return;
+            initAudio();
+            const btn = document.getElementById('start-btn');
+            const rst = document.getElementById('reset-btn');
+            btn.disabled = true; rst.style.visibility = 'hidden';
+            document.getElementById('round-text').innerText = `🔥 第 ${currentRound} 輪激鬥中...`;
+
+            for (let i = 0; i < 15; i++) {
+                playTension(i);
+                const lucky = members[Math.floor(Math.random() * members.length)];
+                const card = document.getElementById(`card-${lucky}`);
+                const plus = document.getElementById(`plus-${lucky}`);
+                card.classList.add('active'); plus.style.opacity = '1';
+                scores[lucky]++; document.getElementById(`score-${lucky}`).innerText = scores[lucky];
+                await new Promise(r => setTimeout(r, Math.max(80, 400 - (i * 25))));
+                card.classList.remove('active'); plus.style.opacity = '0';
+                updateRank();
+            }
+            currentRound++;
+            btn.disabled = false;
+            btn.innerText = currentRound > 3 ? "比賽結束" : `第 ${currentRound} 輪`;
+            document.getElementById('round-text').innerText = currentRound > 3 ? "🏆 總結算完成" : `等待第 ${currentRound} 輪`;
+            rst.style.visibility = 'visible';
+        }
+
+        function updateRank() {
+            const list = document.getElementById('rank-list');
+            const sorted = Object.entries(scores).sort((a,b) => b[1]-a[1]);
+            list.innerHTML = sorted.map(([n, s], i) => `<li class="rank-item ${i<3 && s>0 ? 'top-three' : ''}"><span>${i+1}. ${n}</span><span>${s}票</span></li>`).join('');
+        }
+
+        function resetGame() {
+            if(!confirm("數據即將銷毀，重新開始？")) return;
+            currentRound = 1; members.forEach(m => scores[m] = 0);
+            document.getElementById('start-btn').disabled = false;
+            document.getElementById('start-btn').innerText = "啟動積分賽";
+            document.getElementById('round-text').innerText = "準備開戰：共 3 輪";
+            initUI();
+        }
+        initUI();
+    </script>
+</body>
+</html>
