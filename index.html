@@ -2,149 +2,197 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>晛能 2025 尾牙戰情室 - 行動版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>晛能尾牙俄羅斯轉盤</title>
     <style>
         :root {
-            --neon-gold: #ffea00;
-            --neon-red: #ff003c;
-            --bg-dark: #0a0a0c;
+            --gold: #ffd700;
+            --red: #ff0000;
+            --bg: #1a1a1a;
         }
         body { 
-            background-color: var(--bg-dark); color: white; 
-            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
-            margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center;
-            min-height: 100vh; overflow-x: hidden;
+            background: var(--bg); color: white; margin: 0; padding: 0;
+            font-family: -apple-system, "Microsoft JhengHei", sans-serif;
+            display: flex; flex-direction: column; align-items: center; 
+            overflow: hidden; height: 100vh;
         }
-        h1 { font-size: 1.8rem; color: var(--neon-gold); text-shadow: 0 0 15px #ffea00; text-align: center; margin: 10px 0; }
-        .slogan { font-size: 0.8rem; color: #888; letter-spacing: 2px; margin-bottom: 10px; }
-        .round-indicator { font-size: 1.2rem; color: var(--neon-red); font-weight: bold; height: 1.5rem; margin-bottom: 15px; }
+        .header { margin-top: 20px; text-align: center; }
+        h1 { font-size: 1.5rem; color: var(--gold); margin: 0; text-shadow: 0 0 10px rgba(255,215,0,0.5); }
+        
+        /* 轉盤容器 */
+        .wheel-box {
+            position: relative; width: 90vw; height: 90vw; max-width: 400px; max-height: 400px;
+            margin: 30px 0;
+        }
+        #canvas { width: 100%; height: 100%; filter: drop-shadow(0 0 15px rgba(0,0,0,0.5)); }
+        
+        /* 指針 */
+        .pointer {
+            position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0; 
+            border-left: 15px solid transparent; border-right: 15px solid transparent;
+            border-top: 30px solid var(--red); z-index: 10;
+            filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));
+        }
 
-        /* 戰場網格：核心優化 */
-        .war-room {
-            display: grid; 
-            grid-template-columns: repeat(2, 1fr); /* 手機預設 2 欄 */
-            gap: 10px; width: 100%; max-width: 1200px;
+        /* 控制按鈕 */
+        .btn-box { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        #spin-btn {
+            width: 70%; background: linear-gradient(180deg, #ff4d4d, #b30000);
+            color: white; border: none; padding: 15px; font-size: 1.4rem; font-weight: bold;
+            border-radius: 50px; box-shadow: 0 5px 15px rgba(255,0,0,0.3);
+            cursor: pointer; -webkit-tap-highlight-color: transparent;
         }
-        @media (min-width: 768px) {
-            .war-room { grid-template-columns: repeat(5, 1fr); } /* 電腦版改回 5 欄 */
-            h1 { font-size: 2.8rem; }
-        }
+        #spin-btn:active { transform: scale(0.95); }
+        #spin-btn:disabled { background: #555; box-shadow: none; opacity: 0.6; }
 
-        .member-card {
-            background: rgba(255, 255, 255, 0.05); border: 1px solid #333; border-radius: 10px;
-            padding: 15px 5px; text-align: center; position: relative; transition: 0.2s;
+        /* 中獎紀錄 */
+        .history {
+            flex: 1; width: 90%; margin-top: 20px; background: rgba(255,255,255,0.05);
+            border-radius: 15px 15px 0 0; padding: 15px; overflow-y: auto;
         }
-        .member-card.active { 
-            border-color: var(--neon-gold); box-shadow: 0 0 20px var(--neon-gold);
-            transform: scale(1.05); background: rgba(255, 234, 0, 0.15); z-index: 2;
-        }
-        .name { font-size: 1.1rem; font-weight: bold; color: #fff; }
-        .score { font-size: 1.8rem; color: var(--neon-gold); font-family: 'Arial Black'; margin-top: 5px; }
-        .vote-plus { position: absolute; top: -5px; right: 5px; color: #0f0; font-weight: bold; opacity: 0; }
-
-        /* 控制區 */
-        .controls { margin: 25px 0; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-        #start-btn {
-            width: 80%; max-width: 300px; background: linear-gradient(45deg, #ff003c, #ffea00); border: none;
-            padding: 15px; font-size: 1.5rem; font-weight: 900; border-radius: 50px; cursor: pointer;
-            box-shadow: 0 0 20px rgba(255, 0, 60, 0.4);
-        }
-        #reset-btn { background: none; color: #666; border: 1px solid #444; padding: 8px 20px; border-radius: 20px; font-size: 0.9rem; visibility: hidden; }
-
-        /* 排行榜 */
-        .leaderboard {
-            width: 95%; background: rgba(20, 20, 25, 0.9); border-radius: 15px; padding: 15px; 
-            border: 1px solid rgba(255, 234, 0, 0.1); margin-bottom: 30px;
-        }
-        .rank-list { list-style: none; padding: 0; display: grid; grid-template-columns: 1fr; gap: 8px; }
-        @media (min-width: 600px) { .rank-list { grid-template-columns: 1fr 1fr; } }
-        .rank-item { display: flex; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 5px; font-size: 0.9rem; }
-        .rank-item.top-three { border-left: 3px solid var(--neon-gold); background: rgba(255,234,0,0.05); }
+        .history h3 { font-size: 1rem; color: var(--gold); margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        .win-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #333; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
-    <h1>⚡ 晛能 2025 戰情室 ⚡</h1>
-    <div class="slogan">POWERED BY XIAN-NENG LEGAL</div>
-    <div class="round-indicator" id="round-text">準備開戰：共 3 輪</div>
-
-    <div class="war-room" id="war-room"></div>
-
-    <div class="controls">
-        <button id="start-btn" onclick="startMegaRound()">啟動積分賽</button>
-        <button id="reset-btn" onclick="resetGame()">重新洗牌</button>
+    <div class="header">
+        <h1>🎯 晛能公司 2025 命運轉盤</h1>
+        <div style="font-size: 0.8rem; color: #888;">一轉定生死，大獎跟我走</div>
     </div>
 
-    <div class="leaderboard">
-        <h2 style="text-align:center; font-size:1.2rem; color:var(--neon-gold)">📊 即時排行榜</h2>
-        <ul class="rank-list" id="rank-list"></ul>
+    <div class="wheel-box">
+        <div class="pointer"></div>
+        <canvas id="canvas" width="800" height="800"></canvas>
+    </div>
+
+    <div class="btn-box">
+        <button id="spin-btn" onclick="startSpin()">博命一轉！</button>
+        <div id="status" style="color: var(--gold); font-weight: bold; height: 20px;"></div>
+    </div>
+
+    <div class="history">
+        <h3>🏆 榮耀榜 (三輪紀錄)</h3>
+        <div id="history-list"></div>
     </div>
 
     <script>
-        const members = ["莊明憲", "陳秀萍", "張家富", "陳弘秀", "黃耀民", "程筱沁", "程思欣", "尤建郎", "李穗玲", "徐珮茹", "陳美卿", "張琴芬", "薛秀娥", "郭家興", "鄭旭峰", "蕭新福", "張芝榛", "王淑芳", "絲淇", "王信閎"];
-        let scores = {};
-        let currentRound = 1;
-        let audioCtx;
+        const names = ["莊明憲", "陳秀萍", "張家富", "陳弘秀", "黃耀民", "程筱沁", "程思欣", "尤建郎", "李穗玲", "徐珮茹", "陳美卿", "張琴芬", "薛秀娥", "郭家興", "鄭旭峰", "蕭新福", "張芝榛", "王淑芳", "絲淇", "王信閎"];
+        const colors = ["#b30000", "#d4af37", "#800000", "#daa520"];
+        
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const btn = document.getElementById('spin-btn');
+        const historyList = document.getElementById('history-list');
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-        function playTension(p) { 
-            initAudio(); const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
-            o.type = 'sawtooth'; o.frequency.setValueAtTime(60 + (p * 4), audioCtx.currentTime);
-            g.gain.setValueAtTime(0.05, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-            o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.1);
-        }
+        let currentRotation = 0;
+        let isSpinning = false;
+        let roundCount = 1;
 
-        function initUI() {
-            const wr = document.getElementById('war-room'); wr.innerHTML = '';
-            members.forEach(m => {
-                scores[m] = scores[m] || 0;
-                wr.innerHTML += `<div class="member-card" id="card-${m}"><span class="name">${m}</span><div class="score" id="score-${m}">${scores[m]}</div><div class="vote-plus" id="plus-${m}">+1</div></div>`;
+        function drawWheel() {
+            const centerX = 400; const centerY = 400; const radius = 380;
+            const sliceAngle = (2 * Math.PI) / names.length;
+
+            ctx.clearRect(0, 0, 800, 800);
+            names.forEach((name, i) => {
+                const angle = i * sliceAngle;
+                ctx.fillStyle = colors[i % 4];
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, angle, angle + sliceAngle);
+                ctx.fill();
+                ctx.strokeStyle = "rgba(255,255,255,0.2)";
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(angle + sliceAngle / 2);
+                ctx.fillStyle = "white";
+                ctx.font = "bold 28px sans-serif";
+                ctx.textAlign = "right";
+                ctx.fillText(name, radius - 40, 10);
+                ctx.restore();
             });
-            updateRank();
         }
 
-        async function startMegaRound() {
-            if (currentRound > 3) return;
-            initAudio();
-            const btn = document.getElementById('start-btn');
-            const rst = document.getElementById('reset-btn');
-            btn.disabled = true; rst.style.visibility = 'hidden';
-            document.getElementById('round-text').innerText = `🔥 第 ${currentRound} 輪激鬥中...`;
+        function playTick() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+        }
 
-            for (let i = 0; i < 15; i++) {
-                playTension(i);
-                const lucky = members[Math.floor(Math.random() * members.length)];
-                const card = document.getElementById(`card-${lucky}`);
-                const plus = document.getElementById(`plus-${lucky}`);
-                card.classList.add('active'); plus.style.opacity = '1';
-                scores[lucky]++; document.getElementById(`score-${lucky}`).innerText = scores[lucky];
-                await new Promise(r => setTimeout(r, Math.max(80, 400 - (i * 25))));
-                card.classList.remove('active'); plus.style.opacity = '0';
-                updateRank();
+        function startSpin() {
+            if (isSpinning || roundCount > 3) return;
+            isSpinning = true;
+            btn.disabled = true;
+            document.getElementById('status').innerText = "運轉中...";
+
+            const spinRotations = 10 + Math.random() * 5; 
+            const extraDegrees = Math.random() * 360;
+            const totalRotation = spinRotations * 360 + extraDegrees;
+            
+            let start = null;
+            const duration = 5000; // 5秒轉完
+            const initialRotation = currentRotation;
+
+            function animate(timestamp) {
+                if (!start) start = timestamp;
+                const progress = timestamp - start;
+                const t = progress / duration;
+                
+                // 緩動函數 (Ease Out)
+                const easeOut = 1 - Math.pow(1 - t, 3);
+                const stepRotation = initialRotation + (totalRotation * easeOut);
+                
+                canvas.style.transform = `rotate(${stepRotation}deg)`;
+                
+                // 模擬滴答聲：角度變化時播放
+                if (Math.floor(stepRotation / (360/names.length)) !== Math.floor(currentRotation / (360/names.length))) {
+                    playTick();
+                }
+                currentRotation = stepRotation;
+
+                if (progress < duration) {
+                    requestAnimationFrame(animate);
+                } else {
+                    finishSpin();
+                }
             }
-            currentRound++;
-            btn.disabled = false;
-            btn.innerText = currentRound > 3 ? "比賽結束" : `第 ${currentRound} 輪`;
-            document.getElementById('round-text').innerText = currentRound > 3 ? "🏆 總結算完成" : `等待第 ${currentRound} 輪`;
-            rst.style.visibility = 'visible';
+            requestAnimationFrame(animate);
         }
 
-        function updateRank() {
-            const list = document.getElementById('rank-list');
-            const sorted = Object.entries(scores).sort((a,b) => b[1]-a[1]);
-            list.innerHTML = sorted.map(([n, s], i) => `<li class="rank-item ${i<3 && s>0 ? 'top-three' : ''}"><span>${i+1}. ${n}</span><span>${s}票</span></li>`).join('');
+        function finishSpin() {
+            isSpinning = false;
+            // 計算中獎者：指針在正上方 (270度位置)
+            const finalAngle = (currentRotation % 360);
+            const correctedAngle = (360 - finalAngle + 270) % 360;
+            const winnerIndex = Math.floor(correctedAngle / (360 / names.length)) % names.length;
+            const winner = names[winnerIndex];
+
+            document.getElementById('status').innerText = `🎉 恭喜：${winner}！`;
+            
+            // 紀錄
+            const div = document.createElement('div');
+            div.className = 'win-item';
+            div.innerHTML = `<span>第 ${roundCount} 輪</span><strong>${winner}</strong>`;
+            historyList.prepend(div);
+
+            roundCount++;
+            if (roundCount <= 3) {
+                btn.disabled = false;
+                btn.innerText = `開始第 ${roundCount} 輪`;
+            } else {
+                btn.innerText = "三輪結束！";
+            }
         }
 
-        function resetGame() {
-            if(!confirm("數據即將銷毀，重新開始？")) return;
-            currentRound = 1; members.forEach(m => scores[m] = 0);
-            document.getElementById('start-btn').disabled = false;
-            document.getElementById('start-btn').innerText = "啟動積分賽";
-            document.getElementById('round-text').innerText = "準備開戰：共 3 輪";
-            initUI();
-        }
-        initUI();
+        drawWheel();
     </script>
 </body>
 </html>
