@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>晛能尾牙：轉盤積分生存賽</title>
+    <title>晛能尾牙：終極積分開獎賽</title>
     <style>
         :root {
             --neon-gold: #ffea00;
@@ -14,170 +14,256 @@
             background: var(--bg-dark); color: white; margin: 0; padding: 10px;
             font-family: -apple-system, "Microsoft JhengHei", sans-serif;
             display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+            overflow-x: hidden;
         }
-        h1 { font-size: 1.5rem; color: var(--neon-gold); text-shadow: 0 0 10px #ffea00; margin: 10px 0; }
+        .header { text-align: center; margin-bottom: 10px; }
+        h1 { font-size: 1.8rem; color: var(--neon-gold); text-shadow: 0 0 15px #ffea00; margin: 5px 0; }
+        .info-bar { font-size: 1rem; color: #ff003c; font-weight: bold; margin-bottom: 5px; }
 
-        /* 20人小轉盤網格 */
+        /* 23人網格佈局 */
         .battle-grid {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; max-width: 500px;
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: 100%; max-width: 500px;
         }
         .slot-card {
             background: #1a1a1e; border: 1px solid #333; border-radius: 8px;
-            padding: 10px 2px; text-align: center; position: relative; overflow: hidden;
+            padding: 8px 2px; text-align: center; position: relative; transition: 0.3s;
         }
-        .slot-card.spinning { border-color: var(--neon-red); animation: pulse 0.2s infinite; }
-        .slot-name { font-size: 0.8rem; display: block; margin-bottom: 5px; color: #ccc; }
-        .slot-count { font-size: 1.5rem; font-weight: 900; color: var(--neon-gold); }
+        .slot-card.spinning { border-color: var(--neon-red); animation: pulse 0.15s infinite; }
+        .slot-card.already-won { opacity: 0.4; filter: grayscale(1); border-color: #000; }
+        .slot-name { font-size: 0.75rem; display: block; margin-bottom: 3px; color: #ccc; }
+        .slot-count { font-size: 1.3rem; font-weight: 900; color: var(--neon-gold); }
 
-        /* 旋轉動畫縮圖 */
         .mini-wheel {
-            width: 30px; height: 30px; border: 2px solid var(--neon-gold);
+            width: 25px; height: 25px; border: 2px solid var(--neon-gold);
             border-radius: 50%; margin: 0 auto; border-top-color: transparent;
-            animation: none;
         }
-        .spinning .mini-wheel { animation: spin 0.3s linear infinite; }
+        .spinning .mini-wheel { animation: spin 0.2s linear infinite; }
 
         /* 控制區 */
-        .footer { margin: 20px 0; width: 100%; display: flex; justify-content: center; }
+        .footer { margin: 20px 0; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
         #start-btn {
-            width: 80%; background: linear-gradient(45deg, #ff003c, #ffea00);
-            border: none; padding: 18px; font-size: 1.5rem; font-weight: 900;
-            border-radius: 50px; color: #000; box-shadow: 0 0 20px rgba(255,0,60,0.5);
+            width: 85%; background: linear-gradient(45deg, #ff003c, #ffea00);
+            border: none; padding: 18px; font-size: 1.6rem; font-weight: 900;
+            border-radius: 50px; color: #000; box-shadow: 0 0 25px rgba(255,0,60,0.6);
+            cursor: pointer;
         }
+        #start-btn:disabled { filter: grayscale(1); opacity: 0.5; box-shadow: none; }
 
-        /* 獲勝者全螢幕開獎 */
+        /* 全螢幕大開獎 */
         #winner-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); display: none; flex-direction: column;
-            align-items: center; justify-content: center; z-index: 100;
-            text-align: center;
+            background: radial-gradient(circle, #300 0%, #000 100%); 
+            display: none; flex-direction: column; align-items: center; justify-content: center; 
+            z-index: 1000; text-align: center;
         }
-        .winner-title { color: var(--neon-gold); font-size: 2rem; margin-bottom: 10px; }
+        .winner-title { color: var(--neon-gold); font-size: 2.5rem; letter-spacing: 5px; margin-bottom: 20px; }
         .winner-name { 
-            font-size: 5rem; color: #fff; text-shadow: 0 0 30px var(--neon-red);
-            animation: bounce 0.5s infinite alternate;
+            font-size: 6rem; color: #fff; text-shadow: 0 0 50px var(--neon-red), 0 0 100px #fff;
+            animation: winnerScale 0.4s infinite alternate;
         }
-        .close-win-btn { margin-top: 30px; padding: 10px 30px; background: #fff; color: #000; border-radius: 20px; border: none; font-weight: bold; }
+        .close-win-btn { margin-top: 50px; padding: 15px 50px; background: #fff; color: #000; border-radius: 40px; border: none; font-size: 1.5rem; font-weight: bold; }
 
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes pulse { 0% { background: #1a1a1e; } 50% { background: #300; } 100% { background: #1a1a1e; } }
-        @keyframes bounce { from { transform: scale(1); } to { transform: scale(1.1); } }
+        @keyframes pulse { 0% { background: #1a1a1e; } 50% { background: #500; } 100% { background: #1a1a1e; } }
+        @keyframes winnerScale { from { transform: scale(1); } to { transform: scale(1.2); } }
+        @keyframes flashBg { 0%, 100% { background: #000; } 50% { background: #600; } }
+        .flash { animation: flashBg 0.1s 5; }
     </style>
 </head>
-<body>
+<body id="main-body">
 
-    <h1>⚡ 晛能積分大逃殺 ⚡</h1>
-    <div id="round-text" style="color: #888; margin-bottom: 10px;">按下按鈕，全體 23人同步轉動！</div>
+    <div class="header">
+        <h1>⚡ 晛能 2025 終極大逃殺 ⚡</h1>
+        <div class="info-bar" id="game-status">第 1 輪 | 剩餘：23 人</div>
+    </div>
 
     <div class="battle-grid" id="grid"></div>
 
     <div class="footer">
-        <button id="start-btn" onclick="startBattle()">全員啟動！</button>
+        <button id="start-btn" onclick="startBattle()">啟動轉盤開獎！</button>
+        <div id="round-log" style="font-size: 0.8rem; color: #666;"></div>
     </div>
 
     <div id="winner-overlay">
-        <div class="winner-title">👑 最終最高票 👑</div>
+        <div class="winner-title">🎊 中 獎 者 🎊</div>
         <div class="winner-name" id="win-name">芳芳姐</div>
-        <div style="font-size: 1.5rem; color: var(--neon-gold); margin-top: 10px;">恭喜獲得大獎！</div>
-        <button class="close-win-btn" onclick="closeWinner()">回到戰場</button>
+        <div style="font-size: 2rem; color: var(--neon-gold); margin-top: 20px;">晛能發大財！獎金進口袋！</div>
+        <button class="close-win-btn" onclick="closeWinner()">確認領獎</button>
     </div>
 
     <script>
-        const names = ["顧問", "佳佳", "富哥", "陳姐", "民民", "傑森", "小雪", "思欣", "阿郎", "Amy姐", "康雄", "佩茹", "美卿姐", "琴芬姐", "娥妹", "家興哥", "鄭委員", "幸福男人", "榛榛", "芳芳姐", "絲淇", "信閎", "品君"];
+        const allNames = ["顧問", "佳佳", "富哥", "陳姐", "民民", "傑森", "小雪", "思欣", "阿郎", "Amy姐", "康雄", "佩茹", "美卿姐", "琴芬姐", "娥妹", "家興哥", "鄭委員", "幸福男人", "榛榛", "芳芳姐", "絲淇", "信閎", "品君"];
+        
         let scores = {};
+        let winnersInCurrentRound = []; // 本輪已中獎名單
+        let roundCount = 1; // 總共2輪
         let audioCtx;
 
         function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
 
-        // 播放歡呼聲 (多頻率合成)
-        function playCheers() {
-            const freqs = [261.6, 329.6, 392, 523.2];
-            freqs.forEach((f, i) => {
+        // 合成：群眾尖叫與歡呼聲
+        function playScreamingCheer() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            
+            // 模擬尖叫 (高頻率振盪)
+            for(let i=0; i<3; i++){
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(f, audioCtx.currentTime + (i * 0.1));
-                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.5);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(800 + (i*400), now);
+                osc.frequency.exponentialRampToValueAtTime(1500 + (i*200), now + 0.5);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 1);
                 osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(); osc.stop(audioCtx.currentTime + 1.5);
-            });
+                osc.start(); osc.stop(now + 1);
+            }
+
+            // 模擬群眾歡呼 (白色噪音濾波)
+            const bufferSize = audioCtx.sampleRate * 2;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(1000, now);
+            filter.frequency.exponentialRampToValueAtTime(400, now + 2);
+            const nGain = audioCtx.createGain();
+            nGain.gain.setValueAtTime(0.3, now);
+            nGain.gain.exponentialRampToValueAtTime(0.01, now + 2);
+            
+            noise.connect(filter); filter.connect(nGain); nGain.connect(audioCtx.destination);
+            noise.start();
         }
 
         function playTick() {
+            initAudio();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+            osc.frequency.setValueAtTime(200, audioCtx.currentTime);
             gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
             osc.connect(gain); gain.connect(audioCtx.destination);
             osc.start(); osc.stop(audioCtx.currentTime + 0.05);
         }
 
-        // 初始化 20 個小戰位
-        const grid = document.getElementById('grid');
-        names.forEach(n => {
-            scores[n] = 0;
-            grid.innerHTML += `
-                <div class="slot-card" id="card-${n}">
-                    <span class="slot-name">${n}</span>
-                    <div class="mini-wheel"></div>
-                    <div class="slot-count" id="score-${n}">0</div>
-                </div>
-            `;
-        });
+        // 初始化界面
+        function initUI() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            allNames.forEach(n => {
+                scores[n] = 0;
+                grid.innerHTML += `
+                    <div class="slot-card" id="card-${n}">
+                        <span class="slot-name">${n}</span>
+                        <div class="mini-wheel"></div>
+                        <div class="slot-count" id="score-${n}">0</div>
+                    </div>
+                `;
+            });
+            updateStatus();
+        }
+
+        function updateStatus() {
+            const remaining = allNames.length - winnersInCurrentRound.length;
+            document.getElementById('game-status').innerText = `第 ${roundCount} 輪 | 剩餘：${remaining} 人`;
+            
+            // 標記已中獎者
+            allNames.forEach(n => {
+                const card = document.getElementById(`card-${n}`);
+                if (winnersInCurrentRound.includes(n)) {
+                    card.classList.add('already-won');
+                } else {
+                    card.classList.remove('already-won');
+                }
+            });
+        }
 
         async function startBattle() {
             initAudio();
+            // 檢查是否該輪已結束
+            if (winnersInCurrentRound.length >= allNames.length) {
+                if (roundCount < 2) {
+                    alert("第 1 輪 23 人已全部開獎完畢！即將進入第 2 輪！");
+                    roundCount = 2;
+                    winnersInCurrentRound = [];
+                    initUI();
+                    return;
+                } else {
+                    alert("兩輪開獎均已結束！謝謝大家！");
+                    return;
+                }
+            }
+
             const btn = document.getElementById('start-btn');
             btn.disabled = true;
-            
-            // 重置分數
-            names.forEach(n => {
+
+            // 隨機選出「本抽」的獲勝者 (必須是還沒中獎的人)
+            const availableNames = allNames.filter(n => !winnersInCurrentRound.includes(n));
+            const winnerOfThisSpin = availableNames[Math.floor(Math.random() * availableNames.length)];
+
+            // 重置積分顯示，並啟動全體旋轉動畫
+            allNames.forEach(n => {
                 scores[n] = 0;
                 document.getElementById(`score-${n}`).innerText = 0;
                 document.getElementById(`card-${n}`).classList.add('spinning');
             });
 
-            // 總共跑 40 次隨機分配
+            // 執行積分跑動動畫 (40步)
             const totalSteps = 40;
             for (let i = 0; i < totalSteps; i++) {
-                const lucky = names[Math.floor(Math.random() * names.length)];
-                scores[lucky]++;
-                document.getElementById(`score-${lucky}`).innerText = scores[lucky];
+                // 為了視覺效果，讓所有人隨機跳動分數
+                const luckyIdx = Math.floor(Math.random() * allNames.length);
+                const tempName = allNames[luckyIdx];
+                scores[tempName]++;
+                document.getElementById(`score-${tempName}`).innerText = scores[tempName];
                 
                 playTick();
-                // 速度越來越快
-                await new Promise(r => setTimeout(r, Math.max(50, 200 - (i * 5))));
+                await new Promise(r => setTimeout(r, Math.max(40, 150 - (i * 4))));
             }
 
-            // 結束轉動
-            names.forEach(n => document.getElementById(`card-${n}`).classList.remove('spinning'));
+            // 確保「預定獲勝者」的分數是最高的
+            const currentMax = Math.max(...Object.values(scores));
+            scores[winnerOfThisSpin] = currentMax + 5; 
+            document.getElementById(`score-${winnerOfThisSpin}`).innerText = scores[winnerOfThisSpin];
 
-            // 找最高票
-            const winner = Object.keys(scores).reduce((a, b) => scores[a] > scores[b] ? a : b);
-            
-            // 延遲一下公佈，營造懸念
+            // 停止動畫
+            allNames.forEach(n => document.getElementById(`card-${n}`).classList.remove('spinning'));
+
+            // 記錄獲勝者
+            winnersInCurrentRound.push(winnerOfThisSpin);
+
+            // 懸念延遲後公佈
             setTimeout(() => {
-                showWinner(winner);
-            }, 800);
+                showWinner(winnerOfThisSpin);
+            }, 500);
         }
 
         function showWinner(name) {
             document.getElementById('win-name').innerText = name;
             document.getElementById('winner-overlay').style.display = 'flex';
-            playCheers();
+            document.getElementById('main-body').classList.add('flash');
             
-            // 震動 (若手機支援)
-            if (window.navigator.vibrate) window.navigator.vibrate([200, 100, 200]);
+            playScreamingCheer();
+
+            if (window.navigator.vibrate) window.navigator.vibrate([300, 100, 300, 100, 500]);
         }
 
         function closeWinner() {
             document.getElementById('winner-overlay').style.display = 'none';
+            document.getElementById('main-body').classList.remove('flash');
             document.getElementById('start-btn').disabled = false;
+            updateStatus();
+
+            // 如果本輪剛好是最後一個，按鈕文字改為「進入下一輪」
+            if (winnersInCurrentRound.length >= allNames.length) {
+                document.getElementById('start-btn').innerText = roundCount < 2 ? "進入第 2 輪重置" : "全賽事結束";
+            }
         }
+
+        initUI();
     </script>
 </body>
 </html>
-
-
-
