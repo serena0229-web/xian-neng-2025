@@ -3,196 +3,178 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>晛能尾牙俄羅斯轉盤</title>
+    <title>晛能尾牙：轉盤積分生存賽</title>
     <style>
         :root {
-            --gold: #ffd700;
-            --red: #ff0000;
-            --bg: #1a1a1a;
+            --neon-gold: #ffea00;
+            --neon-red: #ff003c;
+            --bg-dark: #0a0a0c;
         }
         body { 
-            background: var(--bg); color: white; margin: 0; padding: 0;
+            background: var(--bg-dark); color: white; margin: 0; padding: 10px;
             font-family: -apple-system, "Microsoft JhengHei", sans-serif;
-            display: flex; flex-direction: column; align-items: center; 
-            overflow: hidden; height: 100vh;
+            display: flex; flex-direction: column; align-items: center; min-height: 100vh;
         }
-        .header { margin-top: 20px; text-align: center; }
-        h1 { font-size: 1.5rem; color: var(--gold); margin: 0; text-shadow: 0 0 10px rgba(255,215,0,0.5); }
-        
-        /* 轉盤容器 */
-        .wheel-box {
-            position: relative; width: 90vw; height: 90vw; max-width: 400px; max-height: 400px;
-            margin: 30px 0;
+        h1 { font-size: 1.5rem; color: var(--neon-gold); text-shadow: 0 0 10px #ffea00; margin: 10px 0; }
+
+        /* 20人小轉盤網格 */
+        .battle-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; max-width: 500px;
         }
-        #canvas { width: 100%; height: 100%; filter: drop-shadow(0 0 15px rgba(0,0,0,0.5)); }
-        
-        /* 指針 */
-        .pointer {
-            position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
-            width: 0; height: 0; 
-            border-left: 15px solid transparent; border-right: 15px solid transparent;
-            border-top: 30px solid var(--red); z-index: 10;
-            filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));
+        .slot-card {
+            background: #1a1a1e; border: 1px solid #333; border-radius: 8px;
+            padding: 10px 2px; text-align: center; position: relative; overflow: hidden;
+        }
+        .slot-card.spinning { border-color: var(--neon-red); animation: pulse 0.2s infinite; }
+        .slot-name { font-size: 0.8rem; display: block; margin-bottom: 5px; color: #ccc; }
+        .slot-count { font-size: 1.5rem; font-weight: 900; color: var(--neon-gold); }
+
+        /* 旋轉動畫縮圖 */
+        .mini-wheel {
+            width: 30px; height: 30px; border: 2px solid var(--neon-gold);
+            border-radius: 50%; margin: 0 auto; border-top-color: transparent;
+            animation: none;
+        }
+        .spinning .mini-wheel { animation: spin 0.3s linear infinite; }
+
+        /* 控制區 */
+        .footer { margin: 20px 0; width: 100%; display: flex; justify-content: center; }
+        #start-btn {
+            width: 80%; background: linear-gradient(45deg, #ff003c, #ffea00);
+            border: none; padding: 18px; font-size: 1.5rem; font-weight: 900;
+            border-radius: 50px; color: #000; box-shadow: 0 0 20px rgba(255,0,60,0.5);
         }
 
-        /* 控制按鈕 */
-        .btn-box { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-        #spin-btn {
-            width: 70%; background: linear-gradient(180deg, #ff4d4d, #b30000);
-            color: white; border: none; padding: 15px; font-size: 1.4rem; font-weight: bold;
-            border-radius: 50px; box-shadow: 0 5px 15px rgba(255,0,0,0.3);
-            cursor: pointer; -webkit-tap-highlight-color: transparent;
+        /* 獲勝者全螢幕開獎 */
+        #winner-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); display: none; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 100;
+            text-align: center;
         }
-        #spin-btn:active { transform: scale(0.95); }
-        #spin-btn:disabled { background: #555; box-shadow: none; opacity: 0.6; }
+        .winner-title { color: var(--neon-gold); font-size: 2rem; margin-bottom: 10px; }
+        .winner-name { 
+            font-size: 5rem; color: #fff; text-shadow: 0 0 30px var(--neon-red);
+            animation: bounce 0.5s infinite alternate;
+        }
+        .close-win-btn { margin-top: 30px; padding: 10px 30px; background: #fff; color: #000; border-radius: 20px; border: none; font-weight: bold; }
 
-        /* 中獎紀錄 */
-        .history {
-            flex: 1; width: 90%; margin-top: 20px; background: rgba(255,255,255,0.05);
-            border-radius: 15px 15px 0 0; padding: 15px; overflow-y: auto;
-        }
-        .history h3 { font-size: 1rem; color: var(--gold); margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 5px; }
-        .win-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #333; font-size: 0.9rem; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse { 0% { background: #1a1a1e; } 50% { background: #300; } 100% { background: #1a1a1e; } }
+        @keyframes bounce { from { transform: scale(1); } to { transform: scale(1.1); } }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1>🎯 晛能公司 2025 命運轉盤</h1>
-        <div style="font-size: 0.8rem; color: #888;">一轉定生死，大獎跟我走</div>
+    <h1>⚡ 晛能積分大逃殺 ⚡</h1>
+    <div id="round-text" style="color: #888; margin-bottom: 10px;">按下按鈕，全體 20 人同步轉動！</div>
+
+    <div class="battle-grid" id="grid"></div>
+
+    <div class="footer">
+        <button id="start-btn" onclick="startBattle()">全員啟動！</button>
     </div>
 
-    <div class="wheel-box">
-        <div class="pointer"></div>
-        <canvas id="canvas" width="800" height="800"></canvas>
-    </div>
-
-    <div class="btn-box">
-        <button id="spin-btn" onclick="startSpin()">博命一轉！</button>
-        <div id="status" style="color: var(--gold); font-weight: bold; height: 20px;"></div>
-    </div>
-
-    <div class="history">
-        <h3>🏆 榮耀榜 (三輪紀錄)</h3>
-        <div id="history-list"></div>
+    <div id="winner-overlay">
+        <div class="winner-title">👑 最終最高票 👑</div>
+        <div class="winner-name" id="win-name">芳芳姐</div>
+        <div style="font-size: 1.5rem; color: var(--neon-gold); margin-top: 10px;">恭喜獲得大獎！</div>
+        <button class="close-win-btn" onclick="closeWinner()">回到戰場</button>
     </div>
 
     <script>
         const names = ["顧問", "佳佳", "富哥", "陳姐", "民民", "小雪", "思欣", "阿郎", "Amy姐", "佩茹", "美卿姐", "琴芬姐", "娥妹", "家興哥", "鄭委員", "幸福男人", "榛榛", "芳芳姐", "絲淇", "信閎"];
-        const colors = ["#b30000", "#d4af37", "#800000", "#daa520"];
-        
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const btn = document.getElementById('spin-btn');
-        const historyList = document.getElementById('history-list');
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let scores = {};
+        let audioCtx;
 
-        let currentRotation = 0;
-        let isSpinning = false;
-        let roundCount = 1;
+        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
 
-        function drawWheel() {
-            const centerX = 400; const centerY = 400; const radius = 380;
-            const sliceAngle = (2 * Math.PI) / names.length;
-
-            ctx.clearRect(0, 0, 800, 800);
-            names.forEach((name, i) => {
-                const angle = i * sliceAngle;
-                ctx.fillStyle = colors[i % 4];
-                ctx.beginPath();
-                ctx.moveTo(centerX, centerY);
-                ctx.arc(centerX, centerY, radius, angle, angle + sliceAngle);
-                ctx.fill();
-                ctx.strokeStyle = "rgba(255,255,255,0.2)";
-                ctx.stroke();
-
-                ctx.save();
-                ctx.translate(centerX, centerY);
-                ctx.rotate(angle + sliceAngle / 2);
-                ctx.fillStyle = "white";
-                ctx.font = "bold 28px sans-serif";
-                ctx.textAlign = "right";
-                ctx.fillText(name, radius - 40, 10);
-                ctx.restore();
+        // 播放歡呼聲 (多頻率合成)
+        function playCheers() {
+            const freqs = [261.6, 329.6, 392, 523.2];
+            freqs.forEach((f, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(f, audioCtx.currentTime + (i * 0.1));
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.5);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 1.5);
             });
         }
 
         function playTick() {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
             gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+            osc.connect(gain); gain.connect(audioCtx.destination);
             osc.start(); osc.stop(audioCtx.currentTime + 0.05);
         }
 
-        function startSpin() {
-            if (isSpinning || roundCount > 3) return;
-            isSpinning = true;
+        // 初始化 20 個小戰位
+        const grid = document.getElementById('grid');
+        names.forEach(n => {
+            scores[n] = 0;
+            grid.innerHTML += `
+                <div class="slot-card" id="card-${n}">
+                    <span class="slot-name">${n}</span>
+                    <div class="mini-wheel"></div>
+                    <div class="slot-count" id="score-${n}">0</div>
+                </div>
+            `;
+        });
+
+        async function startBattle() {
+            initAudio();
+            const btn = document.getElementById('start-btn');
             btn.disabled = true;
-            document.getElementById('status').innerText = "運轉中...";
-
-            const spinRotations = 10 + Math.random() * 5; 
-            const extraDegrees = Math.random() * 360;
-            const totalRotation = spinRotations * 360 + extraDegrees;
             
-            let start = null;
-            const duration = 5000; // 5秒轉完
-            const initialRotation = currentRotation;
+            // 重置分數
+            names.forEach(n => {
+                scores[n] = 0;
+                document.getElementById(`score-${n}`).innerText = 0;
+                document.getElementById(`card-${n}`).classList.add('spinning');
+            });
 
-            function animate(timestamp) {
-                if (!start) start = timestamp;
-                const progress = timestamp - start;
-                const t = progress / duration;
+            // 總共跑 40 次隨機分配
+            const totalSteps = 40;
+            for (let i = 0; i < totalSteps; i++) {
+                const lucky = names[Math.floor(Math.random() * names.length)];
+                scores[lucky]++;
+                document.getElementById(`score-${lucky}`).innerText = scores[lucky];
                 
-                // 緩動函數 (Ease Out)
-                const easeOut = 1 - Math.pow(1 - t, 3);
-                const stepRotation = initialRotation + (totalRotation * easeOut);
-                
-                canvas.style.transform = `rotate(${stepRotation}deg)`;
-                
-                // 模擬滴答聲：角度變化時播放
-                if (Math.floor(stepRotation / (360/names.length)) !== Math.floor(currentRotation / (360/names.length))) {
-                    playTick();
-                }
-                currentRotation = stepRotation;
-
-                if (progress < duration) {
-                    requestAnimationFrame(animate);
-                } else {
-                    finishSpin();
-                }
+                playTick();
+                // 速度越來越快
+                await new Promise(r => setTimeout(r, Math.max(50, 200 - (i * 5))));
             }
-            requestAnimationFrame(animate);
+
+            // 結束轉動
+            names.forEach(n => document.getElementById(`card-${n}`).classList.remove('spinning'));
+
+            // 找最高票
+            const winner = Object.keys(scores).reduce((a, b) => scores[a] > scores[b] ? a : b);
+            
+            // 延遲一下公佈，營造懸念
+            setTimeout(() => {
+                showWinner(winner);
+            }, 800);
         }
 
-        function finishSpin() {
-            isSpinning = false;
-            // 計算中獎者：指針在正上方 (270度位置)
-            const finalAngle = (currentRotation % 360);
-            const correctedAngle = (360 - finalAngle + 270) % 360;
-            const winnerIndex = Math.floor(correctedAngle / (360 / names.length)) % names.length;
-            const winner = names[winnerIndex];
-
-            document.getElementById('status').innerText = `🎉 恭喜：${winner}！`;
+        function showWinner(name) {
+            document.getElementById('win-name').innerText = name;
+            document.getElementById('winner-overlay').style.display = 'flex';
+            playCheers();
             
-            // 紀錄
-            const div = document.createElement('div');
-            div.className = 'win-item';
-            div.innerHTML = `<span>第 ${roundCount} 輪</span><strong>${winner}</strong>`;
-            historyList.prepend(div);
-
-            roundCount++;
-            if (roundCount <= 3) {
-                btn.disabled = false;
-                btn.innerText = `開始第 ${roundCount} 輪`;
-            } else {
-                btn.innerText = "三輪結束！";
-            }
+            // 震動 (若手機支援)
+            if (window.navigator.vibrate) window.navigator.vibrate([200, 100, 200]);
         }
 
-        drawWheel();
+        function closeWinner() {
+            document.getElementById('winner-overlay').style.display = 'none';
+            document.getElementById('start-btn').disabled = false;
+        }
     </script>
 </body>
 </html>
